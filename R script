@@ -1,0 +1,94 @@
+# ---------------------------------------------
+# 1️⃣ Load Required Libraries
+# ---------------------------------------------
+library(ggplot2)
+library(pROC)
+library(caret)
+library(dplyr)
+
+# ---------------------------------------------
+# 2️⃣ Visualizing the Distribution of Attrition
+# ---------------------------------------------
+ggplot(train_data, aes(x = Attrition, fill = Attrition)) +
+  geom_bar() +
+  geom_text(stat = 'count', aes(label = after_stat(count)), vjust = -0.3) +
+  labs(title = "Distribution of Employee Attrition",
+       x = "Attrition Status", y = "Count") +
+  theme_minimal()
+
+# ---------------------------------------------
+# 3️⃣ Visualizing Key Work-Related Variables
+# ---------------------------------------------
+
+# OverTime vs Attrition
+ggplot(train_data, aes(x = OverTime, fill = Attrition)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Attrition Rate by OverTime Status",
+       y = "Percentage", x = "OverTime") +
+  theme_minimal()
+
+# Monthly Income vs Attrition
+ggplot(train_data, aes(x = Attrition, y = MonthlyIncome, fill = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Monthly Income Distribution by Attrition",
+       x = "Attrition", y = "Monthly Income") +
+  theme_minimal()
+
+# Job Satisfaction vs Attrition
+ggplot(train_data, aes(x = factor(JobSatisfaction), fill = Attrition)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Attrition Rate by Job Satisfaction Level",
+       x = "Job Satisfaction (1=Low, 4=High)", y = "Percentage") +
+  theme_minimal()
+
+# ---------------------------------------------
+# 4️⃣ Model Evaluation Visualization
+# ---------------------------------------------
+
+# Confusion Matrix Heatmap
+conf_matrix <- as.data.frame(conf_mat$table)
+colnames(conf_matrix) <- c("Predicted", "Actual", "Freq")
+
+ggplot(conf_matrix, aes(x = Actual, y = Predicted, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), color = "white", size = 5) +
+  scale_fill_gradient(low = "skyblue", high = "darkblue") +
+  labs(title = "Confusion Matrix Heatmap") +
+  theme_minimal()
+
+# ROC Curve Visualization
+roc_obj <- roc(test_data$Attrition, pred_probs)
+plot(roc_obj, col = "blue", lwd = 2, main = "ROC Curve for Attrition Model")
+text(0.6, 0.2, paste("AUC =", round(auc_value, 3)), cex = 1.2)
+
+# ---------------------------------------------
+# 5️⃣ Model Performance Metrics Table
+# ---------------------------------------------
+performance_df <- data.frame(
+  Metric = c("Accuracy", "Precision", "Recall", "F1 Score", "AUC"),
+  Value = c(round(accuracy, 3), round(precision, 3), round(recall, 3),
+            round(f1, 3), round(auc_value, 3))
+)
+
+print(performance_df)
+
+# ---------------------------------------------
+# 6️⃣ Visualizing Significant Predictors (Odds Ratios)
+# ---------------------------------------------
+significant_vars <- results_table %>%
+  filter(Significant == "Yes" & Variable != "(Intercept)")
+
+ggplot(significant_vars, aes(x = reorder(Variable, Odds_Ratio), y = Odds_Ratio)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Significant Predictors of Attrition (Odds Ratios)",
+       x = "Variables", y = "Odds Ratio") +
+  theme_minimal()
+
+# ---------------------------------------------
+# 7️⃣ Save Results Tables (Optional)
+# ---------------------------------------------
+write.csv(performance_df, "Model_Performance.csv", row.names = FALSE)
+write.csv(results_table, "Logistic_Regression_Results.csv", row.names = FALSE)
